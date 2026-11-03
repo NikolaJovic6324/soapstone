@@ -59,3 +59,14 @@ func TestLoadColors(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadDatabaseURL(t *testing.T) {
+	url := "postgres://soapstone:tajna@db:5432/soapstone?sslmode=disable"
+	c, err := load(env(map[string]string{"DATABASE_URL": url}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.DatabaseURL != url {
+		t.Errorf("DatabaseURL = %q, want %q", c.DatabaseURL, url)
+	}
+}
