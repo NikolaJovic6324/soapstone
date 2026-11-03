@@ -5,6 +5,7 @@
 // Upotreba:
 //
 //	soapstone [serve]   start the HTTP server (default)
+//	soapstone migrate   create or update the database schema
 package main
 
 import (
@@ -27,7 +28,8 @@ import (
 const usage = `usage: soapstone [command]
 
 commands:
-  serve   start the HTTP server (default)
+  serve     start the HTTP server (default)
+  migrate   create or update the database schema (needs DATABASE_URL)
 `
 
 func main() {
@@ -40,6 +42,8 @@ func main() {
 	switch cmd {
 	case "serve":
 		err = serve()
+	case "migrate":
+		err = migrate()
 	case "help", "-h", "--help":
 		fmt.Print(usage)
 	default:
@@ -62,7 +66,16 @@ func serve() error {
 	}
 	log := newLogger(cfg)
 
-	st := store.NewMemory()
+	// Bez DATABASE_URL poruke žive u memoriji, kao do sada; sa njim, u bazi.
+	var st store.Store = store.NewMemory()
+	if cfg.DatabaseURL != "" {
+		pool, err := store.OpenPool(context.Background(), cfg.DatabaseURL)
+		if err != nil {
+			return err
+		}
+		defer pool.Close()
+		st = store.NewPostgres(pool)
+	}
 
 	srv := &http.Server{
 		Addr:              ":" + strconv.Itoa(cfg.Port),
@@ -105,6 +118,39 @@ func serve() error {
 		return err
 	}
 	log.Info("stopped")
+	return nil
+}
+
+// migrate dovodi šemu baze na poslednju verziju i završava. serve to ne radi
+// sam, pri startu: kad radi više kopija aplikacije, šemu menja jedan
+// jednokratni proces, pre njih, a ne svaka kopija za sebe.
+func migrate() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	log := newLogger(cfg)
+	if cfg.DatabaseURL == "" {
+		return errors.New("DATABASE_URL is not set")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	pool, err := store.OpenPool(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	applied, err := store.Migrate(ctx, pool)
+	if err != nil {
+		return fmt.Errorf("migrate: %w", err)
+	}
+	if len(applied) == 0 {
+		log.Info("schema is up to date")
+	} else {
+		log.Info("migrated", "applied", applied)
+	}
 	return nil
 }
 

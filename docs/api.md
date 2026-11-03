@@ -17,7 +17,8 @@ A message:
 | `POST /api/messages` | body `{"author": "…", "text": "…"}`; 201 with the message, or 400 |
 | `GET /api/messages/{id}` | 200 or 404 |
 | `DELETE /api/messages/{id}` | 204 with no body, or 404 |
-| `GET /healthz` | 200, `ok` |
+| `GET /healthz` | 200, `ok`: the process is running |
+| `GET /readyz` | 200, `ready`; or 503 with the reason, when the database is unreachable or its schema is not on the latest version |
 
 Examples:
 
@@ -39,5 +40,6 @@ All settings are env variables. `make run` also loads `.env`, if it exists.
 | `APP_COLOR` | `steelblue` | page header color: a CSS color name (`tomato`) or hex (`#ff6347`) |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
 | `LOG_FORMAT` | `json` | `json` or `text`; logs go to stdout, one line per request |
+| `DATABASE_URL` | empty | Postgres URL, `postgres://user:password@host:5432/db?sslmode=disable`; empty means messages live in memory |
 
-Messages live in process memory and are gone when the app stops.
+Without `DATABASE_URL` messages live in process memory and are gone when the app stops. With it they live in Postgres. The app does not create its tables on start: run `soapstone migrate` (same `DATABASE_URL`) first, and again after every update. It creates or updates the schema and exits; when the schema is already up to date it does nothing. Until then `/readyz` returns 503.

@@ -23,7 +23,8 @@ type Store interface {
 	Get(ctx context.Context, id int64) (message.Message, error)
 	// Delete briše jednu poruku, ili vraća ErrNotFound.
 	Delete(ctx context.Context, id int64) error
-	// Ready kaže da li skladište može da radi. Memorija je uvek spremna.
+	// Ready kaže da li skladište može da radi. Memorija je uvek spremna, a
+	// Postgres kad je baza dostupna i šema na poslednjoj verziji.
 	Ready(ctx context.Context) error
 	// Kind je kratko ime skladišta, na primer "memory", za prikaz.
 	Kind() string

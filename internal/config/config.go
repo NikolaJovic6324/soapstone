@@ -20,6 +20,8 @@ type Config struct {
 	AppColor  string
 	LogLevel  slog.Level
 	LogFormat string // "json" ili "text"
+	// DatabaseURL je adresa baze Postgres; prazno znači memorijsko skladište.
+	DatabaseURL string
 }
 
 // Load čita env promenljive. Za neispravnu vrednost vraća grešku koja kaže
@@ -74,6 +76,9 @@ func load(getenv func(string) string) (Config, error) {
 	default:
 		return c, fmt.Errorf("LOG_FORMAT must be json or text, got %q", f)
 	}
+
+	// URL se ne proverava ovde: to radi drajver baze, pri otvaranju pool-a.
+	c.DatabaseURL = getenv("DATABASE_URL")
 
 	return c, nil
 }
