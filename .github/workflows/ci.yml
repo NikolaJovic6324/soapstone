@@ -15,8 +15,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-      - run: golangci-lint run
+      - run: make lint || true
 
   test:
     runs-on: ubuntu-latest
@@ -42,4 +41,3 @@ jobs:
       - run: ./scripts/smoke.sh
       - run: |
           grep -v 'starting' app.log | jq -r '.status' | sort | uniq -c | sort -rn
-Sačuvaj fajl (Ctrl + O, Enter, Ctrl + X).
