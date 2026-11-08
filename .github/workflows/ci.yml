@@ -1,14 +1,45 @@
-# Prvi workflow predmeta. Za sada samo pokazuje da se izvršava i gde;
-# šta stvarno radi, pišete vi.
 name: CI
 
-# Kada se pokreće: na svaki push i na svaki pull request.
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
-  check:
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Zdravo iz GitHub Actions, commit $GITHUB_SHA"
-      - run: uname -a
-      - run: pwd && ls -la
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - run: golangci-lint run
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: make test
+
+  smoke:
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: make build
+      - run: |
+          ./bin/soapstone > app.log 2>&1 &
+          sleep 2
+      - run: ./scripts/smoke.sh
+      - run: |
+          grep -v 'starting' app.log | jq -r '.status' | sort | uniq -c | sort -rn
+Sačuvaj fajl (Ctrl + O, Enter, Ctrl + X).
